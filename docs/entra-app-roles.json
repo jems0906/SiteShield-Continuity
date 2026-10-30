@@ -1,0 +1,34 @@
+[
+  {
+    "allowedMemberTypes": ["User"],
+    "description": "Review and record fictional assurance findings.",
+    "displayName": "Analyst",
+    "id": "4a364124-f7e2-4674-bbbe-eda143a9b645",
+    "isEnabled": true,
+    "value": "analyst"
+  },
+  {
+    "allowedMemberTypes": ["User"],
+    "description": "Review and accept completed maintenance work.",
+    "displayName": "Reviewer",
+    "id": "16f934fa-e7f2-4ef5-a759-a9f3210baffe",
+    "isEnabled": true,
+    "value": "reviewer"
+  },
+  {
+    "allowedMemberTypes": ["User"],
+    "description": "Update explicitly shared vendor work orders.",
+    "displayName": "Vendor",
+    "id": "3fe92ab7-a0b6-4ffe-80de-ece04dd11b25",
+    "isEnabled": true,
+    "value": "vendor"
+  },
+  {
+    "allowedMemberTypes": ["User"],
+    "description": "Read-only continuity and assurance view.",
+    "displayName": "Leadership",
+    "id": "845addb1-1a82-4d84-a1a3-127cdbef0b82",
+    "isEnabled": true,
+    "value": "leadership"
+  }
+]

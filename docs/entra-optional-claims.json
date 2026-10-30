@@ -1,0 +1,12 @@
+{
+  "idToken": [
+    {
+      "name": "amr",
+      "source": null,
+      "essential": false,
+      "additionalProperties": ["include_granular_amr"]
+    }
+  ],
+  "accessToken": [],
+  "saml2Token": []
+}
