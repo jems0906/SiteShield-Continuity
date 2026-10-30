@@ -38,6 +38,8 @@ npm run dev
 
 Open the Vite URL printed in the terminal (normally `http://localhost:5173`). API health is `http://127.0.0.1:8000/health`; interactive API documentation is at `/docs`.
 
+Workspace sections have refreshable paths: `/`, `/assets`, `/audits`, `/alarms`, `/work-orders`, `/handoffs`, `/continuity`, and `/awareness`.
+
 ## Reproducible checks
 
 ```powershell
@@ -52,7 +54,7 @@ npm run check
 npm run build
 ```
 
-CI is configured to run those backend tests and the frontend check/build on pull requests and pushes; GitHub Actions associates each run with its triggering commit. This workspace has no `.git` metadata, so no local commit ID or CI execution result exists yet. No deployment run or live hosted URL is claimed by this source delivery.
+CI runs the backend tests and frontend check/build on pull requests and pushes. GitHub Actions retains each run with its triggering commit SHA and result.
 
 ## Demo roles and limitations
 
@@ -66,7 +68,11 @@ Deploy three separate Railway services: PostgreSQL, backend with root directory 
 
 Run migrations as a controlled release step with `alembic upgrade head` from `/backend`, then seed only an explicit synthetic profile with `python -m scripts.seed_demo`. Do not automatically seed production or store credentials in source control. Restart persistence, migration execution, health, role enforcement, and one complete maintenance case must be verified in the target environment before considering a deployment ready. Rebuild the frontend if its API URL changes.
 
-Live backend URL: not deployed. Live frontend URL: not deployed. A local overview screenshot is included at `docs/siteshield-dashboard.png`. The seeded case and fixture files are the reproducible worked reports for this source delivery.
+Live frontend: https://siteshield-frontend-production.up.railway.app
+
+Live backend health: https://siteshield-backend-production.up.railway.app/health
+
+The services run in Railway's `us-west2` region. PostgreSQL was migrated through the backend pre-deploy release command, then populated only through the explicit synthetic seed profile. The public overview screenshot is included at `docs/siteshield-dashboard.png`; the seeded case and fixture files are the reproducible worked reports for this source delivery.
 
 ## Project map
 

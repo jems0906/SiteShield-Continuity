@@ -24,6 +24,21 @@ const navigation: { name: Section; icon: IconType }[] = [
   { name: 'Awareness library', icon: BookOpen },
 ]
 
+const sectionPaths: Record<Section, string> = {
+  Overview: '/',
+  'Asset register': '/assets',
+  'Security audits': '/audits',
+  'Alarm analysis': '/alarms',
+  'Vendor work': '/work-orders',
+  'Shift handoff': '/handoffs',
+  'Continuity & exercises': '/continuity',
+  'Awareness library': '/awareness',
+}
+
+function sectionFromPath(pathname: string): Section {
+  return navigation.find(({ name }) => sectionPaths[name] === pathname)?.name ?? 'Overview'
+}
+
 const awareness = [
   { title: 'Accurate reporting', tag: 'RECORDS', copy: 'Record what was observed, when it occurred, and what is not yet known. Separate direct observation from interpretation; preserve the original event record.' },
   { title: 'Confidentiality', tag: 'DATA CARE', copy: 'Use only approved case references. Avoid personal details, floor plans, access credentials, device endpoints, and sensitive images in routine maintenance notes.' },
@@ -37,7 +52,7 @@ const trend = [
 ]
 
 function App() {
-  const [section, setSection] = useState<Section>('Overview')
+  const [section, setSection] = useState<Section>(() => sectionFromPath(window.location.pathname))
   const [role, setRole] = useState<Role>('leadership')
   const [mobileNav, setMobileNav] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
@@ -67,6 +82,18 @@ function App() {
 
   useEffect(() => { void refresh() }, [role])
 
+  useEffect(() => {
+    const handlePopState = () => setSection(sectionFromPath(window.location.pathname))
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  function navigateTo(nextSection: Section) {
+    setSection(nextSection)
+    const path = sectionPaths[nextSection]
+    if (window.location.pathname !== path) window.history.pushState(null, '', path)
+  }
+
   async function acknowledgeHandoff(id: string) {
     try {
       await postJson(`/handoffs/${id}/acknowledge`, role)
@@ -89,7 +116,7 @@ function App() {
         <div className="workspace-switch"><div className="workspace-glyph">N</div><div><span>WORKSPACE</span><strong>North Site · Demo</strong></div><ChevronDown size={15} /></div>
         <p className="nav-caption">ASSURANCE DESK</p>
         <nav aria-label="Primary navigation">
-          {navigation.map(({ name, icon: Icon }) => <button key={name} className={`nav-link ${section === name ? 'active' : ''}`} onClick={() => { setSection(name); setMobileNav(false) }}><Icon size={17} strokeWidth={1.8} /><span>{name}</span>{name === 'Security audits' && findings.some((item) => item.result === 'fail') && <i className="nav-dot" />}</button>)}
+          {navigation.map(({ name, icon: Icon }) => <button key={name} className={`nav-link ${section === name ? 'active' : ''}`} onClick={() => { navigateTo(name); setMobileNav(false) }}><Icon size={17} strokeWidth={1.8} /><span>{name}</span>{name === 'Security audits' && findings.some((item) => item.result === 'fail') && <i className="nav-dot" />}</button>)}
         </nav>
         <div className="sidebar-bottom">
           <div className="coverage-note"><div className="coverage-icon"><BadgeCheck size={16} /></div><div><strong>Coverage intact</strong><span>All demo systems monitored</span></div></div>
@@ -106,7 +133,7 @@ function App() {
         <div className="page-content">
           {apiError && <div className="api-banner"><span>The API is unavailable. Start the backend and seed the synthetic profile to load workspace records.</span><button onClick={() => void refresh()}>Retry</button></div>}
           {notice && <button className="toast" onClick={() => setNotice('')}><Check size={15} />{notice}<X size={14} /></button>}
-          {section === 'Overview' && <Overview assets={assets} events={events} findings={findings} orders={orders} metrics={metrics} onNavigate={setSection} />}
+          {section === 'Overview' && <Overview assets={assets} events={events} findings={findings} orders={orders} metrics={metrics} onNavigate={navigateTo} />}
           {section === 'Asset register' && <AssetRegister assets={assets} />}
           {section === 'Security audits' && <AuditView findings={findings} />}
           {section === 'Alarm analysis' && <AlarmView events={events} metrics={metrics} />}
