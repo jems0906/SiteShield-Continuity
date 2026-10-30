@@ -1,0 +1,5 @@
+asset_id,category,owner,inspection_date,status,site
+DOOR-014,Door contact,Facilities assurance,2026-10-20,Operational; monitored,North Site
+READER-006,Access-control reader,Access services,2026-10-18,Operational,North Site
+CAM-021,Camera,Facilities assurance,2026-10-14,Operational,North Site
+PANEL-003,Alarm panel,Security systems,2026-10-10,Operational,North Site

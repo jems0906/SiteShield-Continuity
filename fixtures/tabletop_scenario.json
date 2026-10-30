@@ -1,0 +1,27 @@
+{
+  "id": "EX-STORM-01",
+  "scenario": "Fictional storm-related site-access disruption with delayed security-system vendor support",
+  "format": "Facilitated discussion-based tabletop; not an actual emergency response",
+  "business_impact_analysis": {
+    "critical_processes": ["Payroll processing", "Essential records access"],
+    "dependencies": ["Approved remote workspace", "Identity service", "Vendor support"],
+    "recovery_priorities": ["Protect employee safety", "Restore essential records workflow", "Resume noncritical work"],
+    "approved_alternatives": ["Approved remote work", "Manual queue logging with later reconciliation"],
+    "recovery_objectives": ["Payroll: 24-hour RTO / 1-business-day RPO (fictional tabletop target)", "Essential records: 8-hour RTO / 4-hour RPO (fictional tabletop target)"],
+    "decision_authority": "Continuity lead after consultation with site leadership and vendor coordinator"
+  },
+  "timeline": [
+    {"time": "T+00", "inject": "Severe weather disrupts normal site access; vendor reports delayed availability."},
+    {"time": "T+15", "inject": "A critical process owner reports an access-dependent task due before the next shift."},
+    {"time": "T+30", "inject": "A public-facing status update is requested before facts are confirmed."}
+  ],
+  "communications": [
+    {"audience": "Employees", "draft": "A weather-related access disruption is under assessment. Follow approved continuity instructions; do not travel to the site unless authorized."},
+    {"audience": "Vendor coordinator", "draft": "Please confirm service availability and the next update time through the approved contact channel."}
+  ],
+  "separate_incident_mitigation_scenario": {
+    "prompt": "A fictional visitor becomes upset during a service delay.",
+    "practice": ["Use calm, respectful communication", "Maintain personal and bystander safety", "Notify authorized responders according to employer procedures", "Record observable facts and timestamps"],
+    "limits": ["No tactical confrontation instruction", "No claim of de-escalation certification", "Does not replace employer emergency procedures", "Tabletop is not real-world crisis-management experience"]
+  }
+}

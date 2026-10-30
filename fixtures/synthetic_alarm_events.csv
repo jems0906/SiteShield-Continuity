@@ -1,0 +1,9 @@
+event_id,source_record_id,asset_id,occurred_at,classification,summary
+EV-201,SRC-EV-201,DOOR-014,2026-10-15T09:00:00Z,nuisance,Intermittent contact-state report
+EV-202,SRC-EV-202,DOOR-014,2026-10-16T10:15:00Z,nuisance,Intermittent contact-state report
+EV-203,SRC-EV-203,DOOR-014,2026-10-17T11:30:00Z,actionable,Door contact activation; inspection initiated
+EV-204,SRC-EV-204,DOOR-014,2026-10-17T11:30:00Z,duplicate,Door contact activation; inspection initiated
+EV-205,SRC-EV-205,DOOR-014,2026-10-19T08:00:00Z,scheduled_test,Documented scheduled functional test
+EV-206,SRC-EV-206,DOOR-014,2026-10-20T14:00:00Z,unresolved,Contact-state inconsistency; vendor diagnosis pending
+EV-207,SRC-EV-207,DOOR-014,2026-10-24T16:30:00Z,scheduled_test,Post-repair functional test passed; synthetic record
+EV-208,SRC-EV-208,DOOR-014,2026-10-28T09:30:00Z,scheduled_test,Post-repair functional retest; synthetic pass record
