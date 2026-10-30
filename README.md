@@ -60,7 +60,7 @@ CI runs the backend tests and frontend check/build on pull requests and pushes. 
 
 ## Demo roles and limitations
 
-Sign in with Microsoft Entra ID when the OIDC settings below are configured. The backend validates the signed ID token, tenant, audience, required MFA `amr` claim, and exactly one assigned SiteShield app role; the role is never accepted from a client header. Signed HttpOnly cookies and CSRF protection guard the application session. With Entra unconfigured, local Argon2 password accounts are available only for development.
+Sign in with Microsoft Entra ID when the OIDC settings below are configured. The backend validates the signed ID token, tenant, audience, required MFA `amr` claim, and assigned SiteShield app roles; the active role can only be selected from roles in that signed claim and is never accepted directly from a client header. Signed HttpOnly cookies and CSRF protection guard the application session. With Entra unconfigured, local Argon2 password accounts are available only for development.
 
 Vendor records are hidden unless explicitly marked vendor-visible; case data in the seed profile is not shared. `/health` returns only `{"status":"ok"}`. CORS should be restricted to the exact frontend origin, but CORS is not authentication.
 

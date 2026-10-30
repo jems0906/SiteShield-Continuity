@@ -2,7 +2,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
-from app.models import Base
 
 
 database_url = settings.database_url
@@ -18,7 +17,3 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 def get_db():
     with SessionLocal() as session:
         yield session
-
-
-def initialize_database() -> None:
-    Base.metadata.create_all(bind=engine)
