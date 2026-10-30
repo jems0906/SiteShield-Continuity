@@ -82,7 +82,7 @@ Live frontend: https://siteshield-frontend-production.up.railway.app
 
 Live backend health: https://siteshield-backend-production.up.railway.app/health
 
-The services run in Railway's `us-west2` region. PostgreSQL was migrated through the backend pre-deploy release command, then populated only through the explicit synthetic seed profile. The local overview screenshot is included at `docs/siteshield-dashboard.png`; the seeded case and fixture files are the reproducible worked reports for this source delivery.
+The services run in Railway's `us-west2` region. PostgreSQL was migrated through the backend pre-deploy release command, then populated only through the explicit synthetic seed profile. An anonymized, authenticated reviewer overview from the live workspace is included at `docs/siteshield-dashboard.png`; the seeded case and fixture files are the reproducible worked reports for this source delivery.
 
 ## Project map
 
