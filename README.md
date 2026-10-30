@@ -66,7 +66,7 @@ Vendor records are hidden unless explicitly marked vendor-visible; case data in 
 
 Deploy three separate Railway services: PostgreSQL, backend with root directory `/backend`, and frontend with root directory `/frontend`. Set backend `DATABASE_URL` from the PostgreSQL service reference; this project converts `postgres://` and `postgresql://` schemes to `postgresql+psycopg://`. Set backend `CORS_ORIGINS` to the exact HTTPS frontend origin. Set frontend `VITE_API_URL` to the backend's full HTTPS origin before building and assign the frontend public-domain target port `8080`. The backend binds to Railway's assigned `PORT`.
 
-Run migrations as a controlled release step with `alembic upgrade head` from `/backend`, then seed only an explicit synthetic profile with `python -m scripts.seed_demo`. Do not automatically seed production or store credentials in source control. Restart persistence, migration execution, health, role enforcement, and one complete maintenance case must be verified in the target environment before considering a deployment ready. Rebuild the frontend if its API URL changes.
+Run migrations as a controlled release step with `alembic upgrade head` from `/backend`, then seed only an explicit synthetic profile with `python -m scripts.seed_demo`. Do not automatically seed production or store credentials in source control. For this deployment, migration, health, role visibility, the vendor-to-reviewer maintenance workflow, restart persistence, and `/asset-register` deep-link refresh were verified. Rebuild the frontend if its API URL changes.
 
 This public instance contains only fictional records and has its own isolated PostgreSQL service. To restore the demo after testing, set `ALLOW_DEMO_RESET=true` on the backend and run `railway ssh --service siteshield-backend --environment production -- python -m scripts.reset_demo`. The command also requires `DEMO_MODE=true`; it is not exposed as an HTTP endpoint. Keep reset disabled on any non-demo environment.
 
@@ -74,7 +74,7 @@ Live frontend: https://siteshield-frontend-production.up.railway.app
 
 Live backend health: https://siteshield-backend-production.up.railway.app/health
 
-The services run in Railway's `us-west2` region. PostgreSQL was migrated through the backend pre-deploy release command, then populated only through the explicit synthetic seed profile. The public overview screenshot is included at `docs/siteshield-dashboard.png`; the seeded case and fixture files are the reproducible worked reports for this source delivery.
+The services run in Railway's `us-west2` region. PostgreSQL was migrated through the backend pre-deploy release command, then populated only through the explicit synthetic seed profile. The local overview screenshot is included at `docs/siteshield-dashboard.png`; the seeded case and fixture files are the reproducible worked reports for this source delivery.
 
 ## Project map
 
