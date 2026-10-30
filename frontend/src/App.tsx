@@ -55,7 +55,7 @@ function App() {
   const [section, setSection] = useState<Section>(() => sectionFromPath(window.location.pathname))
   const [account, setAccount] = useState<SessionUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState('reviewer-demo')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
