@@ -68,6 +68,8 @@ Deploy three separate Railway services: PostgreSQL, backend with root directory 
 
 Run migrations as a controlled release step with `alembic upgrade head` from `/backend`, then seed only an explicit synthetic profile with `python -m scripts.seed_demo`. Do not automatically seed production or store credentials in source control. Restart persistence, migration execution, health, role enforcement, and one complete maintenance case must be verified in the target environment before considering a deployment ready. Rebuild the frontend if its API URL changes.
 
+This public instance contains only fictional records and has its own isolated PostgreSQL service. To restore the demo after testing, set `ALLOW_DEMO_RESET=true` on the backend and run `railway ssh --service siteshield-backend --environment production -- python -m scripts.reset_demo`. The command also requires `DEMO_MODE=true`; it is not exposed as an HTTP endpoint. Keep reset disabled on any non-demo environment.
+
 Live frontend: https://siteshield-frontend-production.up.railway.app
 
 Live backend health: https://siteshield-backend-production.up.railway.app/health

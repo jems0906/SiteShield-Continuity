@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./siteshield.db"
     cors_origins: str = "http://localhost:5173"
     demo_mode: bool = True
+    allow_demo_reset: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
