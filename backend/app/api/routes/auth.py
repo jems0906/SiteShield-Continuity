@@ -1,13 +1,16 @@
 import secrets
 
+from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
+from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import Account
+from app.models import Account, AuditLog
 from app.security.auth import create_session_token, current_account, dummy_password_hash, verify_password
+from app.security.entra import account_from_entra_claims
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -29,21 +32,77 @@ def _set_cookies(response: Response, username: str, csrf_token: str) -> None:
 
 
 def _user_payload(account: Account, csrf_token: str) -> dict[str, str]:
-    return {"username": account.username, "role": account.role, "csrf_token": csrf_token}
+    return {"username": account.display_name or account.username, "role": account.role, "csrf_token": csrf_token}
+
+
+def _entra_client():
+    if not settings.entra_enabled:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Entra sign-in is not configured")
+    oauth = OAuth()
+    return oauth.register(
+        name="entra",
+        client_id=settings.entra_client_id,
+        client_secret=settings.entra_client_secret,
+        server_metadata_url=f"https://login.microsoftonline.com/{settings.entra_tenant_id}/v2.0/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid profile email"},
+    )
+
+
+@router.get("/methods")
+def methods():
+    return {"entra_enabled": settings.entra_enabled, "local_password_enabled": not settings.entra_enabled}
 
 
 @router.post("/login")
 def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
+    if settings.entra_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Use Microsoft Entra sign-in")
     if len(settings.auth_secret_key) < 32:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Authentication is not configured")
     account = db.get(Account, payload.username)
     password_hash = account.password_hash if account else dummy_password_hash
-    valid_password = verify_password(password_hash, payload.password)
+    valid_password = bool(password_hash and verify_password(password_hash, payload.password))
     if not account or not account.is_active or not valid_password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
     csrf_token = secrets.token_urlsafe(32)
     _set_cookies(response, account.username, csrf_token)
     return _user_payload(account, csrf_token)
+
+
+@router.get("/entra/login")
+async def entra_login(request: Request):
+    client = _entra_client()
+    return await client.authorize_redirect(request, settings.entra_redirect_uri)
+
+
+@router.get("/entra/callback")
+async def entra_callback(request: Request, db: Session = Depends(get_db)):
+    client = _entra_client()
+    try:
+        token = await client.authorize_access_token(request)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Microsoft Entra sign-in failed") from exc
+    claims = token.get("userinfo")
+    if not isinstance(claims, dict):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Entra ID token claims are missing")
+    username, role, display_name = account_from_entra_claims(
+        dict(claims), settings.entra_tenant_id, settings.entra_client_id
+    )
+    account = db.get(Account, username)
+    if account is not None and not account.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
+    if account is None:
+        account = Account(username=username, display_name=display_name, password_hash=None, role=role)
+        db.add(account)
+    else:
+        account.display_name = display_name
+        account.role = role
+    db.add(AuditLog(actor_role=role, action="entra_login", record_type="account", record_id=username))
+    db.commit()
+    csrf_token = secrets.token_urlsafe(32)
+    response = RedirectResponse(settings.auth_frontend_url, status_code=status.HTTP_303_SEE_OTHER)
+    _set_cookies(response, username, csrf_token)
+    return response
 
 
 @router.get("/me")

@@ -8,7 +8,7 @@ import {
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { currentUser, getJson, login, logout, postJson, setCsrfToken, type Asset, type EventRecord, type Exercise, type Finding, type Handoff, type Metrics, type Role, type SessionUser, type WorkOrder } from './api/client'
+import { currentUser, entraLoginUrl, getAuthMethods, getJson, login, logout, postJson, setCsrfToken, type Asset, type EventRecord, type Exercise, type Finding, type Handoff, type Metrics, type Role, type SessionUser, type WorkOrder } from './api/client'
 
 type Section = 'Overview' | 'Asset register' | 'Security audits' | 'Alarm analysis' | 'Vendor work' | 'Shift handoff' | 'Continuity & exercises' | 'Awareness library'
 type IconType = typeof LayoutDashboard
@@ -54,6 +54,7 @@ const trend = [
 function App() {
   const [section, setSection] = useState<Section>(() => sectionFromPath(window.location.pathname))
   const [account, setAccount] = useState<SessionUser | null>(null)
+  const [entraEnabled, setEntraEnabled] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
   const [username, setUsername] = useState('reviewer-demo')
   const [password, setPassword] = useState('')
@@ -89,12 +90,18 @@ function App() {
 
   useEffect(() => {
     let active = true
-    void currentUser().then((session) => {
+    void Promise.all([
+      currentUser().catch(() => null),
+      getAuthMethods().catch(() => ({ entra_enabled: false, local_password_enabled: true })),
+    ]).then(([session, methods]) => {
       if (!active) return
-      setCsrfToken(session.csrf_token)
-      setAccount(session)
-    }).catch(() => {
-      if (active) setAccount(null)
+      setEntraEnabled(methods.entra_enabled)
+      if (session) {
+        setCsrfToken(session.csrf_token)
+        setAccount(session)
+      } else {
+        setAccount(null)
+      }
     }).finally(() => {
       if (active) setAuthLoading(false)
     })
@@ -150,7 +157,7 @@ function App() {
   const current = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
   if (authLoading) return <main className="auth-screen"><div className="auth-mark"><ShieldCheck size={24} /></div><p>Checking session…</p></main>
-  if (!account) return <main className="auth-screen"><form className="auth-panel" onSubmit={(event) => void signIn(event)}><div className="auth-mark"><ShieldCheck size={24} /></div><p className="eyebrow">SITESHIELD CONTINUITY</p><h1>Sign in</h1><p className="auth-copy">Use your assigned workspace account.</p><label htmlFor="username">Username</label><input id="username" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required maxLength={80} /><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required maxLength={1024} />{loginError && <p className="auth-error" role="alert">{loginError}</p>}<button className="button-primary" type="submit"><LockKeyhole size={16} /> Sign in</button><p className="auth-footnote">Fictional records only · Not an alarm controller</p></form></main>
+  if (!account) return <main className="auth-screen">{entraEnabled ? <section className="auth-panel"><div className="auth-mark"><ShieldCheck size={24} /></div><p className="eyebrow">SITESHIELD CONTINUITY</p><h1>Sign in</h1><p className="auth-copy">Continue with your organization's Microsoft account.</p><a className="button-primary auth-provider-button" href={entraLoginUrl()}><LockKeyhole size={16} /> Continue with Microsoft</a><p className="auth-footnote">Fictional records only · Not an alarm controller</p></section> : <form className="auth-panel" onSubmit={(event) => void signIn(event)}><div className="auth-mark"><ShieldCheck size={24} /></div><p className="eyebrow">SITESHIELD CONTINUITY</p><h1>Sign in</h1><p className="auth-copy">Use your assigned workspace account.</p><label htmlFor="username">Username</label><input id="username" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required maxLength={80} /><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required maxLength={1024} />{loginError && <p className="auth-error" role="alert">{loginError}</p>}<button className="button-primary" type="submit"><LockKeyhole size={16} /> Sign in</button><p className="auth-footnote">Fictional records only · Not an alarm controller</p></form>}</main>
 
   return (
     <div className="app-shell">

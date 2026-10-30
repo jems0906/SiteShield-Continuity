@@ -1,13 +1,22 @@
 import hmac
+import secrets
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.routes import alarms, assets, audits, auth, exercises, handoffs, work_orders
 from app.config import settings
 
 app = FastAPI(title="SiteShield Continuity", version="1.0.0", description="Synthetic maintenance-coordination and preparedness workspace")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.auth_secret_key or secrets.token_urlsafe(48),
+    session_cookie="siteshield_oauth_state",
+    same_site=settings.auth_cookie_samesite,
+    https_only=settings.auth_cookie_secure,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

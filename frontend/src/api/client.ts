@@ -9,6 +9,7 @@ export interface SessionUser {
   csrf_token: string
 }
 
+
 export function setCsrfToken(token: string) {
   csrfToken = token
 }
@@ -147,4 +148,19 @@ export interface Metrics {
   definitions: Record<string, string>
   demonstration: boolean
   notice: string
+}
+
+export interface AuthMethods {
+  entra_enabled: boolean
+  local_password_enabled: boolean
+}
+
+export async function getAuthMethods(): Promise<AuthMethods> {
+  const response = await fetch(`${baseUrl}/api/auth/methods`)
+  if (!response.ok) throw new Error(`Request failed (${response.status})`)
+  return response.json() as Promise<AuthMethods>
+}
+
+export function entraLoginUrl(): string {
+  return `${baseUrl}/api/auth/entra/login`
 }
