@@ -4,7 +4,7 @@ from hashlib import sha256
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0006_anonymize_federated_accounts"
+revision = "0006_pseudonymize_fed"
 down_revision = "0005_account_allowed_roles"
 branch_labels = None
 depends_on = None
