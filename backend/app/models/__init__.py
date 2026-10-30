@@ -119,5 +119,6 @@ class Account(Base):
     display_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(40), nullable=False)
+    roles: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

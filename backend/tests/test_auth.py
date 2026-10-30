@@ -3,7 +3,7 @@ from fastapi import HTTPException
 
 from app.api.routes import auth as auth_routes
 from app.models import Account
-from app.security.auth import hash_password
+from app.security.auth import create_session_token, hash_password
 from app.security.entra import account_from_entra_claims
 
 
@@ -68,10 +68,15 @@ def entra_claims(**overrides):
 
 
 def test_entra_claims_require_expected_tenant_audience_mfa_and_one_role():
-    username, role, display_name = account_from_entra_claims(entra_claims(), TENANT_ID, CLIENT_ID)
+    username, roles, display_name = account_from_entra_claims(entra_claims(), TENANT_ID, CLIENT_ID)
     assert username == f"entra:{TENANT_ID}:{OBJECT_ID}"
-    assert role == "reviewer"
+    assert roles == ["reviewer"]
     assert display_name == "Reviewer One"
+
+    _, multiple_roles, _ = account_from_entra_claims(
+        entra_claims(roles=["analyst", "reviewer", "vendor", "leadership"]), TENANT_ID, CLIENT_ID
+    )
+    assert multiple_roles == ["analyst", "leadership", "reviewer", "vendor"]
 
     with pytest.raises(HTTPException) as wrong_tenant:
         account_from_entra_claims(entra_claims(tid="123e4567-e89b-12d3-a456-426614174099"), TENANT_ID, CLIENT_ID)
@@ -86,7 +91,7 @@ def test_entra_claims_require_expected_tenant_audience_mfa_and_one_role():
     assert missing_mfa.value.status_code == 403
 
     with pytest.raises(HTTPException) as multiple_roles:
-        account_from_entra_claims(entra_claims(roles=["analyst", "reviewer"]), TENANT_ID, CLIENT_ID)
+        account_from_entra_claims(entra_claims(roles=[]), TENANT_ID, CLIENT_ID)
     assert multiple_roles.value.status_code == 403
 
 
@@ -113,6 +118,7 @@ def test_entra_callback_creates_passwordless_account_and_session(client, monkeyp
         account = db.get(Account, f"entra:{TENANT_ID}:{OBJECT_ID}")
         assert account is not None
         assert account.role == "reviewer"
+        assert account.roles == ["reviewer"]
         assert account.password_hash is None
         assert account.display_name == "Reviewer One"
 
@@ -146,3 +152,27 @@ def test_password_login_is_disabled_when_entra_is_configured(client, monkeypatch
     response = client_api.post("/api/auth/login", json={"username": "local-reviewer", "password": "correct-horse-battery-staple"})
 
     assert response.status_code == 404
+
+
+def test_role_switch_only_allows_roles_assigned_to_the_account(client):
+    client_api, factory = client
+    with factory() as db:
+        db.add(Account(
+            username="multi-role",
+            display_name="Multi Role User",
+            password_hash=None,
+            role="reviewer",
+            roles=["analyst", "reviewer", "vendor"],
+        ))
+        db.commit()
+    csrf_token = "test-csrf-token"
+    headers = {"X-CSRF-Token": csrf_token}
+    cookies = {"site_session": create_session_token("multi-role"), "site_csrf": csrf_token}
+
+    switched = client_api.post("/api/auth/role", json={"role": "vendor"}, headers=headers, cookies=cookies)
+    assert switched.status_code == 200
+    assert switched.json()["role"] == "vendor"
+    assert switched.json()["roles"] == ["analyst", "reviewer", "vendor"]
+
+    denied = client_api.post("/api/auth/role", json={"role": "leadership"}, headers=headers, cookies=cookies)
+    assert denied.status_code == 403

@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models import Account, AuditLog
 from app.security.auth import create_session_token, current_account, dummy_password_hash, verify_password
 from app.security.entra import account_from_entra_claims
+from app.security.roles import Role
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -18,6 +19,10 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=1, max_length=1024)
+
+
+class RoleSelection(BaseModel):
+    role: Role
 
 
 def _set_cookies(response: Response, username: str, csrf_token: str) -> None:
@@ -32,7 +37,12 @@ def _set_cookies(response: Response, username: str, csrf_token: str) -> None:
 
 
 def _user_payload(account: Account, csrf_token: str) -> dict[str, str]:
-    return {"username": account.display_name or account.username, "role": account.role, "csrf_token": csrf_token}
+    return {
+        "username": account.display_name or account.username,
+        "role": account.role,
+        "roles": account.roles or [account.role],
+        "csrf_token": csrf_token,
+    }
 
 
 def _entra_client():
@@ -85,24 +95,46 @@ async def entra_callback(request: Request, db: Session = Depends(get_db)):
     claims = token.get("userinfo")
     if not isinstance(claims, dict):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Entra ID token claims are missing")
-    username, role, display_name = account_from_entra_claims(
+    username, roles, display_name = account_from_entra_claims(
         dict(claims), settings.entra_tenant_id, settings.entra_client_id
     )
+    active_role = "reviewer" if "reviewer" in roles else roles[0]
     account = db.get(Account, username)
     if account is not None and not account.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
     if account is None:
-        account = Account(username=username, display_name=display_name, password_hash=None, role=role)
+        account = Account(username=username, display_name=display_name, password_hash=None, role=active_role, roles=roles)
         db.add(account)
     else:
         account.display_name = display_name
-        account.role = role
-    db.add(AuditLog(actor_role=role, action="entra_login", record_type="account", record_id=username))
+        account.roles = roles
+        if account.role not in roles:
+            account.role = active_role
+    db.add(AuditLog(actor_role=account.role, action="entra_login", record_type="account", record_id=username))
     db.commit()
     csrf_token = secrets.token_urlsafe(32)
     response = RedirectResponse(settings.auth_frontend_url, status_code=status.HTTP_303_SEE_OTHER)
     _set_cookies(response, username, csrf_token)
     return response
+
+
+@router.post("/role")
+def select_role(
+    payload: RoleSelection,
+    request: Request,
+    response: Response,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    allowed_roles = account.roles or [account.role]
+    if payload.role.value not in allowed_roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role is not assigned to this account")
+    account.role = payload.role.value
+    db.add(AuditLog(actor_role=account.role, action="active_role_changed", record_type="account", record_id=account.username))
+    db.commit()
+    db.refresh(account)
+    csrf_token = request.cookies.get("site_csrf", "")
+    return _user_payload(account, csrf_token)
 
 
 @router.get("/me")

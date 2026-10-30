@@ -8,7 +8,7 @@ import {
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { currentUser, entraLoginUrl, getAuthMethods, getJson, login, logout, postJson, setCsrfToken, type Asset, type EventRecord, type Exercise, type Finding, type Handoff, type Metrics, type Role, type SessionUser, type WorkOrder } from './api/client'
+import { currentUser, entraLoginUrl, getAuthMethods, getJson, login, logout, postJson, selectRole, setCsrfToken, type Asset, type EventRecord, type Exercise, type Finding, type Handoff, type Metrics, type Role, type SessionUser, type WorkOrder } from './api/client'
 
 type Section = 'Overview' | 'Asset register' | 'Security audits' | 'Alarm analysis' | 'Vendor work' | 'Shift handoff' | 'Continuity & exercises' | 'Awareness library'
 type IconType = typeof LayoutDashboard
@@ -145,6 +145,17 @@ function App() {
     }
   }
 
+  async function changeRole(nextRole: Role) {
+    try {
+      const session = await selectRole(nextRole)
+      setCsrfToken(session.csrf_token)
+      setAccount(session)
+      setNotice(`Active role changed to ${roleLabel(session.role)}.`)
+    } catch {
+      setNotice('That role is not assigned to this account.')
+    }
+  }
+
   async function acknowledgeHandoff(id: string) {
     try {
       await postJson(`/handoffs/${id}/acknowledge`)
@@ -182,7 +193,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="crumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={19} /></button><span>North Site</span><span className="crumb-slash">/</span><strong>{section}</strong></div>
-          <div className="top-actions"><span className="demo-chip"><span /> SYNTHETIC DEMO</span><span className="role-badge"><Users size={15} />{roleLabel(role)}</span><span className="today-label">{current}</span></div>
+          <div className="top-actions"><span className="demo-chip"><span /> SYNTHETIC DEMO</span>{account.roles.length > 1 ? <label className="role-select"><Users size={15} /><span className="sr-only">Active role</span><select aria-label="Active role" value={role} onChange={(event) => void changeRole(event.target.value as Role)}>{account.roles.map((assignedRole) => <option value={assignedRole} key={assignedRole}>{roleLabel(assignedRole)}</option>)}</select><ChevronDown size={13} /></label> : <span className="role-badge"><Users size={15} />{roleLabel(role)}</span>}<span className="today-label">{current}</span></div>
         </header>
         <div className="page-content">
           {apiError && <div className="api-banner"><span>The API is unavailable. Start the backend and seed the synthetic profile to load workspace records.</span><button onClick={() => void refresh()}>Retry</button></div>}

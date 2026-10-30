@@ -6,6 +6,7 @@ let csrfToken = ''
 export interface SessionUser {
   username: string
   role: Role
+  roles: Role[]
   csrf_token: string
 }
 
@@ -163,4 +164,8 @@ export async function getAuthMethods(): Promise<AuthMethods> {
 
 export function entraLoginUrl(): string {
   return `${baseUrl}/api/auth/entra/login`
+}
+
+export async function selectRole(role: Role): Promise<SessionUser> {
+  return postJson<SessionUser>('/auth/role', { role })
 }

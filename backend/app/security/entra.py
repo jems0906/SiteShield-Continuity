@@ -16,7 +16,7 @@ ROLE_CLAIMS = {
 }
 
 
-def account_from_entra_claims(claims: dict, tenant_id: str, client_id: str) -> tuple[str, str, str]:
+def account_from_entra_claims(claims: dict, tenant_id: str, client_id: str) -> tuple[str, list[str], str]:
     token_tenant = claims.get("tid")
     object_id = claims.get("oid")
     if token_tenant != tenant_id or not isinstance(object_id, str):
@@ -39,9 +39,9 @@ def account_from_entra_claims(claims: dict, tenant_id: str, client_id: str) -> t
     if not isinstance(role_claims, list):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="An assigned SiteShield role is required")
     roles = {ROLE_CLAIMS[item] for item in role_claims if isinstance(item, str) and item in ROLE_CLAIMS}
-    if len(roles) != 1:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Exactly one SiteShield app role must be assigned")
+    if not roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="At least one SiteShield app role must be assigned")
 
     username = f"entra:{normalized_tenant}:{normalized_object_id}"
     display_name = str(claims.get("name") or claims.get("preferred_username") or username)[:160]
-    return username, next(iter(roles)).value, display_name
+    return username, sorted(role.value for role in roles), display_name
