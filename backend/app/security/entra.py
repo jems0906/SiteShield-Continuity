@@ -1,3 +1,4 @@
+import hashlib
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -42,6 +43,7 @@ def account_from_entra_claims(claims: dict, tenant_id: str, client_id: str) -> t
     if not roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="At least one SiteShield app role must be assigned")
 
-    username = f"entra:{normalized_tenant}:{normalized_object_id}"
-    display_name = str(claims.get("name") or claims.get("preferred_username") or username)[:160]
+    raw_subject = f"entra:{normalized_tenant}:{normalized_object_id}"
+    username = f"entra:{hashlib.sha256(raw_subject.encode()).hexdigest()}"
+    display_name = "Workspace member"
     return username, sorted(role.value for role in roles), display_name

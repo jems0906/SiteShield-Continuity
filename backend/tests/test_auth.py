@@ -1,5 +1,6 @@
 import pytest
 from fastapi import HTTPException
+from hashlib import sha256
 
 from app.api.routes import auth as auth_routes
 from app.models import Account
@@ -69,9 +70,12 @@ def entra_claims(**overrides):
 
 def test_entra_claims_require_expected_tenant_audience_mfa_and_one_role():
     username, roles, display_name = account_from_entra_claims(entra_claims(), TENANT_ID, CLIENT_ID)
-    assert username == f"entra:{TENANT_ID}:{OBJECT_ID}"
+    raw_subject = f"entra:{TENANT_ID}:{OBJECT_ID}"
+    assert username == f"entra:{sha256(raw_subject.encode()).hexdigest()}"
+    assert TENANT_ID not in username
+    assert OBJECT_ID not in username
     assert roles == ["reviewer"]
-    assert display_name == "Reviewer One"
+    assert display_name == "Workspace member"
 
     _, multiple_roles, _ = account_from_entra_claims(
         entra_claims(roles=["analyst", "reviewer", "vendor", "leadership"]), TENANT_ID, CLIENT_ID
@@ -115,12 +119,13 @@ def test_entra_callback_creates_passwordless_account_and_session(client, monkeyp
     assert response.headers["location"] == settings.auth_frontend_url
     assert "site_session" in response.cookies
     with factory() as db:
-        account = db.get(Account, f"entra:{TENANT_ID}:{OBJECT_ID}")
+        account_key = account_from_entra_claims(entra_claims(), TENANT_ID, CLIENT_ID)[0]
+        account = db.get(Account, account_key)
         assert account is not None
         assert account.role == "reviewer"
         assert account.roles == ["reviewer"]
         assert account.password_hash is None
-        assert account.display_name == "Reviewer One"
+        assert account.display_name == "Workspace member"
 
 
 def test_auth_methods_enable_entra_only_when_fully_configured(client, monkeypatch):
