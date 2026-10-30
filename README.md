@@ -38,7 +38,7 @@ npm run dev
 
 Open the Vite URL printed in the terminal (normally `http://localhost:5173`). API health is `http://127.0.0.1:8000/health`; interactive API documentation is at `/docs`.
 
-Workspace sections have refreshable paths: `/`, `/assets`, `/audits`, `/alarms`, `/work-orders`, `/handoffs`, `/continuity`, and `/awareness`.
+Workspace sections have refreshable paths: `/`, `/asset-register`, `/audits`, `/alarms`, `/work-orders`, `/handoffs`, `/continuity`, and `/awareness`.
 
 ## Reproducible checks
 

@@ -26,7 +26,7 @@ const navigation: { name: Section; icon: IconType }[] = [
 
 const sectionPaths: Record<Section, string> = {
   Overview: '/',
-  'Asset register': '/assets',
+  'Asset register': '/asset-register',
   'Security audits': '/audits',
   'Alarm analysis': '/alarms',
   'Vendor work': '/work-orders',
