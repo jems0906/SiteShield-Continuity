@@ -110,3 +110,13 @@ class AuditLog(Base):
     record_type: Mapped[str] = mapped_column(String(40))
     record_id: Mapped[str] = mapped_column(String(80))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class Account(Base):
+    __tablename__ = "accounts"
+
+    username: Mapped[str] = mapped_column(String(80), primary_key=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(40), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

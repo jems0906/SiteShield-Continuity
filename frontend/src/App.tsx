@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   Activity, AlarmClock, ArrowDownRight, ArrowUpRight, BadgeCheck, BookOpen,
   Boxes, BriefcaseBusiness, Check, ChevronDown, ClipboardCheck, CloudSun,
-  FileClock, FileText, Gauge, Handshake, LayoutDashboard, Menu, ShieldCheck,
-  Siren, Users, X,
+  FileClock, FileText, Gauge, Handshake, LayoutDashboard, LockKeyhole, LogOut,
+  Menu, ShieldCheck, Siren, Users, X,
 } from 'lucide-react'
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { getJson, postJson, type Asset, type EventRecord, type Exercise, type Finding, type Handoff, type Metrics, type Role, type WorkOrder } from './api/client'
+import { currentUser, getJson, login, logout, postJson, setCsrfToken, type Asset, type EventRecord, type Exercise, type Finding, type Handoff, type Metrics, type Role, type SessionUser, type WorkOrder } from './api/client'
 
 type Section = 'Overview' | 'Asset register' | 'Security audits' | 'Alarm analysis' | 'Vendor work' | 'Shift handoff' | 'Continuity & exercises' | 'Awareness library'
 type IconType = typeof LayoutDashboard
@@ -53,7 +53,11 @@ const trend = [
 
 function App() {
   const [section, setSection] = useState<Section>(() => sectionFromPath(window.location.pathname))
-  const [role, setRole] = useState<Role>('leadership')
+  const [account, setAccount] = useState<SessionUser | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
   const [mobileNav, setMobileNav] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
   const [events, setEvents] = useState<EventRecord[]>([])
@@ -65,13 +69,16 @@ function App() {
   const [apiError, setApiError] = useState(false)
   const [notice, setNotice] = useState('')
 
-  async function refresh(nextRole = role) {
+  const role = account?.role ?? 'leadership'
+
+  async function refresh() {
+    if (!account) return
     try {
       const [assetRows, eventRows, findingRows, orderRows, handoffRows, exerciseRows, metricRows] = await Promise.all([
-        getJson<Asset[]>('/assets', nextRole), getJson<EventRecord[]>('/alarms', nextRole),
-        getJson<Finding[]>('/audits', nextRole), getJson<WorkOrder[]>('/work-orders', nextRole),
-        getJson<Handoff[]>('/handoffs', nextRole), getJson<Exercise[]>('/exercises', nextRole),
-        getJson<Metrics>('/alarms/metrics', nextRole),
+        getJson<Asset[]>('/assets'), getJson<EventRecord[]>('/alarms'),
+        getJson<Finding[]>('/audits'), getJson<WorkOrder[]>('/work-orders'),
+        getJson<Handoff[]>('/handoffs'), getJson<Exercise[]>('/exercises'),
+        getJson<Metrics>('/alarms/metrics'),
       ])
       setAssets(assetRows); setEvents(eventRows); setFindings(findingRows); setOrders(orderRows)
       setHandoffs(handoffRows); setExercises(exerciseRows); setMetrics(metricRows); setApiError(false)
@@ -80,7 +87,21 @@ function App() {
     }
   }
 
-  useEffect(() => { void refresh() }, [role])
+  useEffect(() => {
+    let active = true
+    void currentUser().then((session) => {
+      if (!active) return
+      setCsrfToken(session.csrf_token)
+      setAccount(session)
+    }).catch(() => {
+      if (active) setAccount(null)
+    }).finally(() => {
+      if (active) setAuthLoading(false)
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => { if (account) void refresh() }, [account?.role])
 
   useEffect(() => {
     const handlePopState = () => setSection(sectionFromPath(window.location.pathname))
@@ -94,9 +115,32 @@ function App() {
     if (window.location.pathname !== path) window.history.pushState(null, '', path)
   }
 
+  async function signIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setLoginError('')
+    try {
+      const session = await login(username, password)
+      setCsrfToken(session.csrf_token)
+      setAccount(session)
+      setPassword('')
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Sign-in failed.')
+    }
+  }
+
+  async function signOut() {
+    try {
+      await logout()
+    } finally {
+      setCsrfToken('')
+      setAccount(null)
+      setAssets([]); setEvents([]); setFindings([]); setOrders([]); setHandoffs([]); setExercises([]); setMetrics(null)
+    }
+  }
+
   async function acknowledgeHandoff(id: string) {
     try {
-      await postJson(`/handoffs/${id}/acknowledge`, role)
+      await postJson(`/handoffs/${id}/acknowledge`)
       setNotice('Handoff acknowledgement recorded.');
       await refresh()
     } catch { setNotice('This role cannot acknowledge the handoff.') }
@@ -104,6 +148,9 @@ function App() {
 
   const exercise = exercises[0]
   const current = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+
+  if (authLoading) return <main className="auth-screen"><div className="auth-mark"><ShieldCheck size={24} /></div><p>Checking session…</p></main>
+  if (!account) return <main className="auth-screen"><form className="auth-panel" onSubmit={(event) => void signIn(event)}><div className="auth-mark"><ShieldCheck size={24} /></div><p className="eyebrow">SITESHIELD CONTINUITY</p><h1>Sign in</h1><p className="auth-copy">Use your assigned workspace account.</p><label htmlFor="username">Username</label><input id="username" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required maxLength={80} /><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required maxLength={1024} />{loginError && <p className="auth-error" role="alert">{loginError}</p>}<button className="button-primary" type="submit"><LockKeyhole size={16} /> Sign in</button><p className="auth-footnote">Fictional records only · Not an alarm controller</p></form></main>
 
   return (
     <div className="app-shell">
@@ -120,7 +167,7 @@ function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="coverage-note"><div className="coverage-icon"><BadgeCheck size={16} /></div><div><strong>Coverage intact</strong><span>All demo systems monitored</span></div></div>
-          <div className="profile-row"><div className="avatar">{role[0].toUpperCase()}</div><div><strong>{roleLabel(role)}</strong><span>DEMO PERMISSION</span></div><ChevronDown size={14} /></div>
+          <div className="profile-row"><div className="avatar">{account.username[0].toUpperCase()}</div><div><strong>{account.username}</strong><span>{roleLabel(role)}</span></div><button className="icon-button" type="button" aria-label="Sign out" onClick={() => void signOut()}><LogOut size={15} /></button></div>
         </div>
       </aside>
       {mobileNav && <button className="scrim" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
@@ -128,7 +175,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="crumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={19} /></button><span>North Site</span><span className="crumb-slash">/</span><strong>{section}</strong></div>
-          <div className="top-actions"><span className="demo-chip"><span /> SYNTHETIC DEMO</span><label className="role-select"><Users size={15} /><span className="sr-only">Demo role</span><select value={role} onChange={(event) => setRole(event.target.value as Role)} aria-label="Demo role"><option value="leadership">Leadership view</option><option value="analyst">Analyst view</option><option value="reviewer">Reviewer view</option><option value="vendor">Vendor view</option></select><ChevronDown size={13} /></label><span className="today-label">{current}</span></div>
+          <div className="top-actions"><span className="demo-chip"><span /> SYNTHETIC DEMO</span><span className="role-badge"><Users size={15} />{roleLabel(role)}</span><span className="today-label">{current}</span></div>
         </header>
         <div className="page-content">
           {apiError && <div className="api-banner"><span>The API is unavailable. Start the backend and seed the synthetic profile to load workspace records.</span><button onClick={() => void refresh()}>Retry</button></div>}
@@ -210,12 +257,12 @@ function WorkView({ orders, role, onRefresh, onNotice }: { orders: WorkOrder[]; 
   const [coverageReviewed, setCoverageReviewed] = useState(false)
   const [reviewNotes, setReviewNotes] = useState('')
   async function acknowledge(id: string) {
-    try { await postJson(`/work-orders/${id}/acknowledge`, role); onNotice('Vendor work acknowledged.'); onRefresh() }
+    try { await postJson(`/work-orders/${id}/acknowledge`); onNotice('Vendor work acknowledged.'); onRefresh() }
     catch { onNotice('This role cannot acknowledge this work order.') }
   }
   async function complete(id: string) {
     try {
-      await postJson(`/work-orders/${id}/complete`, role, {
+      await postJson(`/work-orders/${id}/complete`, {
         completion_record: completionRecord,
         vendor_assessment: 'Fictional vendor assessment recorded by demo role.',
         repair_evidence_reference: 'TEXT-REF-DEMO',
@@ -227,7 +274,7 @@ function WorkView({ orders, role, onRefresh, onNotice }: { orders: WorkOrder[]; 
   }
   async function accept(id: string) {
     try {
-      await postJson(`/work-orders/${id}/accept`, role, { functional_retest: retestPassed, coverage_reviewed: coverageReviewed, notes: reviewNotes })
+      await postJson(`/work-orders/${id}/accept`, { functional_retest: retestPassed, coverage_reviewed: coverageReviewed, notes: reviewNotes })
       onNotice('Reviewer acceptance recorded.')
       onRefresh()
     } catch { onNotice('Acceptance requires completed work, a successful functional retest, and coverage review.') }

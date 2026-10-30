@@ -1,23 +1,58 @@
 export type Role = 'analyst' | 'reviewer' | 'vendor' | 'leadership'
 
 const baseUrl = import.meta.env.VITE_API_URL ?? ''
+let csrfToken = ''
 
-export async function getJson<T>(path: string, role: Role): Promise<T> {
+export interface SessionUser {
+  username: string
+  role: Role
+  csrf_token: string
+}
+
+export function setCsrfToken(token: string) {
+  csrfToken = token
+}
+
+export async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${baseUrl}/api${path}`, {
-    headers: { 'X-Demo-Role': role },
+    credentials: 'include',
   })
   if (!response.ok) throw new Error(`Request failed (${response.status})`)
   return response.json() as Promise<T>
 }
 
-export async function postJson<T>(path: string, role: Role, body?: unknown): Promise<T> {
+export async function postJson<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(`${baseUrl}/api${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Demo-Role': role },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   if (!response.ok) throw new Error(`Request failed (${response.status})`)
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
+}
+
+export async function login(username: string, password: string): Promise<SessionUser> {
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  if (!response.ok) throw new Error('Sign-in failed. Check your username and password.')
+  return response.json() as Promise<SessionUser>
+}
+
+export async function currentUser(): Promise<SessionUser> {
+  const response = await fetch(`${baseUrl}/api/auth/me`, { credentials: 'include' })
+  if (!response.ok) throw new Error('No active session')
+  return response.json() as Promise<SessionUser>
+}
+
+export async function logout(): Promise<void> {
+  await postJson<void>('/auth/logout')
+  csrfToken = ''
 }
 
 export interface Asset {

@@ -1,6 +1,9 @@
 from enum import StrEnum
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, HTTPException
+
+from app.models import Account
+from app.security.auth import current_account
 
 
 class Role(StrEnum):
@@ -10,20 +13,17 @@ class Role(StrEnum):
     leadership = "leadership"
 
 
-def current_role(x_demo_role: str = Header(default="leadership")) -> Role:
+def current_role(account: Account = Depends(current_account)) -> Role:
     try:
-        return Role(x_demo_role)
+        return Role(account.role)
     except ValueError as exc:
-        raise HTTPException(status_code=401, detail="Unknown demo role") from exc
+        raise HTTPException(status_code=403, detail="Account role is not recognized") from exc
 
 
 def require_role(*allowed: Role):
-    def dependency(role: Role = Header(default="leadership")) -> Role:
+    def dependency(role: Role = Depends(current_role)) -> Role:
         if role not in allowed:
             raise HTTPException(status_code=403, detail="Role is not authorized for this action")
-        try:
-            return Role(role)
-        except ValueError as exc:
-            raise HTTPException(status_code=401, detail="Unknown demo role") from exc
+        return role
 
     return dependency
